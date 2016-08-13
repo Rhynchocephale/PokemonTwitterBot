@@ -6,7 +6,7 @@ import bddAccess as bdd
 
 random.seed()
 
-corrections = [
+"""corrections = [
 ["Bulbizarre", ["bulbizard", "bulbizzarre", "bulbizzare", "bulbizzard"], "🌳"],
 ["Herbizarre", ["herbizard", "herbizzarre", "herbizzare", "herbizzard"], "🌷"],
 ["Florizarre", ["florrizarre", "florrizare", "florrizard", "florrizzare", "florizare", "florizzare", "florizzarre"], "🌴"],
@@ -295,17 +295,23 @@ corrections = [
 ["Mimantis", ["mimantiss", "mimantisse"]],
 ["Floramantis", ["floramantiss", "floramantisse"]],
 ["Tiboudet", ["tibaudet"], "🐎"]
+]"""
+
+corrections = [
+["Ossatueur", ["osatueur", "ossatuer", "ossateur"], "💀"],
+["Cocombaffe", ["coconbaffe", "coconbafe", "cocombafe", "cocombaff"], "🍈"],
+["Froussardine", ["frousardine"], "🐟"]
 ]
 
 def createPokemonTable():
     (cur,conn) = bdd.ouvrirConnexion()
     try:
-        bdd.executerReq(cur, "DROP TABLE corrections; CREATE TABLE corrections (correct VARCHAR(12), listOfIncorrect TEXT, emoji TEXT, overallCount MEDIUMINT UNSIGNED, monthlyCount SMALLINT UNSIGNED, PRIMARY KEY (correct));")
+        #bdd.executerReq(cur, "DROP TABLE corrections; CREATE TABLE corrections (correct VARCHAR(12), listOfIncorrect TEXT, emoji TEXT, overallCount MEDIUMINT UNSIGNED, monthlyCount SMALLINT UNSIGNED, PRIMARY KEY (correct));")
         for row in corrections:
             emoji = ""
             if len(row) > 2:
                 emoji = row[2]
-            bdd.executerReq(cur, "INSERT INTO corrections (correct, listOfIncorrect, emoji, answeredNotSoLongAgo, overallCount, monthlyCount) VALUES (%s, %s, %s, 0, 0);", (row[0], list2str(row[1]), emoji))
+            bdd.executerReq(cur, "INSERT INTO corrections (correct, listOfIncorrect, emoji, overallCount, monthlyCount) VALUES (%s, %s, %s, 0, 0);", (row[0], list2str(row[1]), emoji))
         bdd.validerModifs(conn)
     except Exception:
         raise
@@ -358,16 +364,15 @@ while True:
 
     for incorrect in shuffledIncorrect:
 
-
         date_X_days_ago = datetime.date.today() - datetime.timedelta(days=howOldAreTweets)
         date_X_days_ago = date_X_days_ago.isoformat()
 
-        myQuery = incorrect + " -from:pkmncheckerbot since:" + date_X_days_ago
-        #myQuery = "arbre" + " -from:pkmncheckerbot since:" + date_X_days_ago
+        myQuery = incorrect + " -from:pkmncheckerbot -RT since:" + date_X_days_ago
         print(myQuery)
-        time.sleep(1)
+        #time.sleep(1)
 
         twt = tweetQuery(myQuery)
+        #twt = getOneTweet(tweetid)
 
         indexOfTweet = 0
         for s in twt:
@@ -468,7 +473,7 @@ while True:
             addToAnswered(s)
 
             q = api.update_status(m, s.id)
-            time.sleep(5)
-            sys.exit()
+            time.sleep(3600)
+            #sys.exit()
 
         writeToLog("F: nothing found for "+majuscules(incorrect)+" ("+pkmnLine[0]+")\n")

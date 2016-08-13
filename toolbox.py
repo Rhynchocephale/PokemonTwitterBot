@@ -151,6 +151,16 @@ def tweetQuery(text, since=0):
 
     return twt
 
+def getOneTweet(twtId):
+    try:
+        twt = api.get_status(twtId)
+    except tweepy.error.RateLimitError:
+        print("RATE EXCEDED. SLEEPING FOR 16 MINUTES")
+        writeToLog("W: QUERY RATE EXCEDED. SLEEPING FOR 16 MINUTES")
+        time.sleep(960)
+
+    return twt
+
 # [a, b, c, d] -> "a, b, c et d", truncated to MAXLEN chars.
 def strListToText(strList, maxLen=float("inf")):
     strList = [var for var in strList if var] #removing empty strings
@@ -225,17 +235,26 @@ def addToAnswered(s, isLast=0):
 
         return 0
 
-def getOnePokemonToWorkOn():
-    (cur, conn) = bdd.ouvrirConnexion()
-    try:
-        bdd.executerReq(cur, "SELECT correct, listOfIncorrect FROM corrections;")
-        line = cur.fetchall()[random.randint(0,len(list(cur))-1)]
-    except Exception:
-        raise
-    finally:
-        bdd.fermerConnexion(cur, conn)
+def getOnePokemonToWorkOn(correct = ""):
+	(cur, conn) = bdd.ouvrirConnexion()
+	if correct:
+		try:
+			resultLength = bdd.executerReq(cur, "SELECT correct, listOfIncorrect FROM corrections WHERE correct='%s';" % (correct))
+			line = cur.fetchall()[0]
+		except Exception:
+			raise
+		finally:
+			bdd.fermerConnexion(cur, conn)
+	if not correct or not resultLength:
+		try:
+			bdd.executerReq(cur, "SELECT correct, listOfIncorrect FROM corrections;")
+			line = cur.fetchall()[random.randint(0,len(list(cur))-1)]
+		except Exception:
+			raise
+		finally:
+			bdd.fermerConnexion(cur, conn)
 
-    return line
+	return line
 
 def blockUser(s, swearword):
     screenName = s.user.screen_name
@@ -275,3 +294,20 @@ def getAlreadyAnswered():
         bdd.fermerConnexion(cur, conn)
 
     return answered
+
+def insertNewPokemon():
+    corrections = []
+    (cur,conn) = bdd.ouvrirConnexion()
+    try:
+        for row in corrections:
+            emoji = ""
+            if len(row) > 2:
+                emoji = row[2]
+            bdd.executerReq(cur, "INSERT INTO corrections (correct, listOfIncorrect, emoji, overallCount, monthlyCount) VALUES (%s, %s, %s, 0, 0);", (row[0], list2str(row[1]), emoji))
+        bdd.validerModifs(conn)
+    except Exception:
+        raise
+    finally:
+        bdd.fermerConnexion(cur, conn)
+
+    return 0
