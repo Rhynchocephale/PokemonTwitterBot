@@ -7,7 +7,6 @@ Created on 21 feb. 2014
 '''
 
 import MySQLdb, os
-import bddExceptions as exceptions
 
 here = os.path.dirname(os.path.abspath(__file__))
 f = open(os.path.join(here,"bddCredentials.txt"),"r")
@@ -18,7 +17,7 @@ def ouvrirConnexion():
     """
     Connexion à une base de données
     """
-    conn = MySQLdb.connect(host = "Efferalgan.mysql.pythonanywhere-services.com", user = "Efferalgan", passwd = "motdepassetoutnul", db = "Efferalgan$default", charset="utf8", use_unicode=True)
+    conn = MySQLdb.connect(host = "localhost", user = "root", passwd = "motdepassetoutnul", db = "pokemon", charset="utf8", use_unicode=True)
     # création d'un curseur pour accéder à cette base
     cur = conn.cursor()
 

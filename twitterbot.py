@@ -6,6 +6,18 @@ import bddAccess as bdd
 
 random.seed()
 
+badTweet = ""
+badMon = ""
+
+print(sys.argv)
+
+#1st argument is 0 (answer to tweet number arg[2]) or 1 (rage against arg[2])
+if(len(sys.argv) == 3):
+    if sys.argv[1] == "0":
+          badTweet = sys.argv[2]
+    elif sys.argv[1] == "1":
+          badMon = sys.argv[2]
+
 """corrections = [
 ["Bulbizarre", ["bulbizard", "bulbizzarre", "bulbizzare", "bulbizzard"], "🌳"],
 ["Herbizarre", ["herbizard", "herbizzarre", "herbizzare", "herbizzard"], "🌷"],
@@ -294,19 +306,21 @@ random.seed()
 ["Argouste", ["hargouste"], "👱"],
 ["Mimantis", ["mimantiss", "mimantisse"]],
 ["Floramantis", ["floramantiss", "floramantisse"]],
-["Tiboudet", ["tibaudet"], "🐎"]
-]"""
-
-corrections = [
+["Tiboudet", ["tibaudet"], "🐎"],
 ["Ossatueur", ["osatueur", "ossatuer", "ossateur"], "💀"],
 ["Cocombaffe", ["coconbaffe", "coconbafe", "cocombafe", "cocombaff"], "🍈"],
-["Froussardine", ["frousardine"], "🐟"]
-]
+["Froussardine", ["frousardine"], "🐟"],
+["Nounourson", ["nounoursson"], "🐻"],
+["Trépassable", ["trepasable"], "🌅"],
+["Bacabouh", ["bacabout", "bacabou", "bacaboue"], "🌅"],
+["Crabagarre", ["crabbagarre", "crabagare", "crabbagare"]],
+["Boumata", ["boumatta"]]
+]"""
 
 def createPokemonTable():
     (cur,conn) = bdd.ouvrirConnexion()
     try:
-        #bdd.executerReq(cur, "DROP TABLE corrections; CREATE TABLE corrections (correct VARCHAR(12), listOfIncorrect TEXT, emoji TEXT, overallCount MEDIUMINT UNSIGNED, monthlyCount SMALLINT UNSIGNED, PRIMARY KEY (correct));")
+        bdd.executerReq(cur, "CREATE TABLE corrections (correct VARCHAR(12), listOfIncorrect TEXT, emoji TEXT, overallCount MEDIUMINT UNSIGNED, monthlyCount SMALLINT UNSIGNED, PRIMARY KEY (correct));")
         for row in corrections:
             emoji = ""
             if len(row) > 2:
@@ -319,6 +333,25 @@ def createPokemonTable():
         bdd.fermerConnexion(cur, conn)
 
     return 0
+
+def addEmojisToPkmn():
+    (cur,conn) = bdd.ouvrirConnexion()
+    try:
+        for row in corrections:
+            emoji = ""
+            if len(row) > 2:
+                emoji = row[2]
+            bdd.executerReq(cur, "UPDATE corrections SET emoji = '%s' WHERE correct = '%s';" % (emoji, row[0]))
+            #if not cur.rowcount:
+                #bdd.executerReq(cur, "INSERT INTO corrections (correct, listOfIncorrect, emoji, overallCount, monthlyCount) VALUES (%s, %s, %s, 0, 0);", (row[0], list2str(row[1]), emoji))
+        bdd.validerModifs(conn)
+    except Exception:
+        raise
+    finally:
+        bdd.fermerConnexion(cur, conn)
+
+    return 0
+
 
 def populateAlreadyAnswered():
     f = open(os.path.join(here,"alreadyAnswered.txt"),"r")
@@ -346,6 +379,7 @@ def populateAlreadyAnswered():
 
 #createPokemonTable()
 #populateAlreadyAnswered()
+#addEmojisToPkmn()
 
 emojis = ["😉","😜","⚠","☝","😤"]
 
@@ -355,12 +389,15 @@ answered = getAlreadyAnswered()
 blocked = getBlockedUsers()
 
 while True:
-    pkmnLine = getOnePokemonToWorkOn()
+    pkmnLine = getOnePokemonToWorkOn(badMon)
 
     print('------'+pkmnLine[0]+'------')
 
-    shuffledIncorrect = [a for a in pkmnLine[1].split(",")]
-    random.shuffle(shuffledIncorrect)
+    if badMon:
+        shuffledIncorrect = [badMon]
+    else:
+        shuffledIncorrect = [a for a in pkmnLine[1].split(",")]
+        random.shuffle(shuffledIncorrect)
 
     for incorrect in shuffledIncorrect:
 
@@ -371,93 +408,105 @@ while True:
         print(myQuery)
         #time.sleep(1)
 
-        twt = tweetQuery(myQuery)
-        #twt = getOneTweet(tweetid)
+        if badTweet:
+            print("youhou")
+            twt = [getOneTweet(badTweet)]
+        else:
+            twt = tweetQuery(myQuery)
 
         indexOfTweet = 0
         for s in twt:
+            time.sleep(3)
             indexOfTweet += 1
 
             content = s.text
             sn = s.user.screen_name
+            
+            if not badTweet:
+                if str(s.id) in answered or "a"+str(s.id) in answered:
+                    print("Already answered")
+                    continue
 
-            if str(s.id) in answered:
-                print("Already answered")
-                continue
+                if re.search(incorrect, sn, re.IGNORECASE):
+                    print("Incorrect in author pseudo")
+                    continue
 
-            if re.search(incorrect, sn, re.IGNORECASE):
-                print("Incorrect in author pseudo")
-                continue
+                if re.search("@\S*"+incorrect, content, re.IGNORECASE):
+                    print("Incorrect in mention pseudo")
+                    continue
 
-            if re.search("@\S*"+incorrect, content, re.IGNORECASE):
-                print("Incorrect in mention pseudo")
-                continue
+                if searchWord(toAscii(pkmnLine[0]), toAscii(content)):
+                    print("Correct in text")
+                    continue
 
-            if searchWord(toAscii(pkmnLine[0]), toAscii(content)):
-                print("Correct in text")
-                continue
+                if not re.search(incorrect, toAscii(content), re.IGNORECASE):
+                    print("No incorrect in text. Possibly in retweet")
+                    continue
 
-            if not re.search(incorrect, toAscii(content), re.IGNORECASE):
-                print("No incorrect in text. Possibly in retweet")
-                continue
+                if re.search("@Youtube", content, re.IGNORECASE):
+                    print("Youtube video")
+                    continue
 
-            if s.user.screen_name in blocked:
-                print("Blocked user")
-                continue
+                if s.user.screen_name in blocked:
+                    print("Blocked user")
+                    continue
 
             writeToLog("T from @"+sn+": "+content+"\n")
 
             print(str(indexOfTweet)+"/"+str(len(twt))+": "+content)
             listOfWrong = checkForWrong(content)
-            print("checked")
 
-            m = "@"+s.user.screen_name+" "
+            if not listOfWrong:
+                print("This is weird, no wrong found.")
+                continue
 
-            if len(listOfWrong) == 1 or strListToText(listOfWrong, 138-len("Ils s'appellent "))[1] < 2:
+            m = "@"+sn+" "
+
+            if len(listOfWrong) == 1 or strListToText([element[0] for element in listOfWrong], 138-len("Ils s'appellent "))[1] < 2:
                 whichCase = random.randint(0,18)
 
                 if whichCase == 0:
-                    m += "Ça s'écrit " + pkmnLine[0]
+                    m += "Ça s'écrit " + listOfWrong[0][0]
                 elif whichCase == 1:
-                    m += majuscules(incorrect) + " ? Ce ne serait pas plutôt " + pkmnLine[0] + " ?"
+                    m += listOfWrong[0][1] + " ? Ce ne serait pas plutôt " + listOfWrong[0][0] + " ?"
                 elif whichCase == 2:
-                    m += "C'est " + pkmnLine[0] + ", pas " + majuscules(incorrect)
+                    m += "C'est " + listOfWrong[0][0] + ", pas " + listOfWrong[0][1]
                 elif whichCase == 3:
-                    m += "Son vrai nom c'est " + pkmnLine[0]
+                    m += "Son vrai nom c'est " + listOfWrong[0][0]
                 elif whichCase == 4:
-                    m += "sa sékri " + pkmnLine[0]
+                    m += "Point orthographe: ça s'écrit " + listOfWrong[0][0]
                 elif whichCase == 5:
-                    m += "C'est \"" + pkmnLine[0] + '", voyons !'
+                    m += "C'est \"" + listOfWrong[0][0] + '", voyons !'
                 elif whichCase == 6:
-                    m += "Protip: c'est " + pkmnLine[0]
+                    m += "Protip: c'est " + listOfWrong[0][0]
                 elif whichCase == 7:
-                    m += "Mon Pokédex m'indique que ce Pokémon s'appelle en réalité " + pkmnLine[0]
+                    m += "Mon Pokédex m'indique que ce Pokémon s'appelle en réalité " + listOfWrong[0][0]
                 elif whichCase == 8:
-                    m += "Attention, ce Pokémon s'appelle en fait " + pkmnLine[0]
+                    m += "Attention, ce Pokémon s'appelle en fait " + listOfWrong[0][0]
                 elif whichCase == 9:
-                    m += pkmnLine[0] + ", pas " + majuscules(incorrect) + " !"
+                    m += listOfWrong[0][0] + ", pas " + listOfWrong[0][1] + " !"
                 elif whichCase == 10:
-                    m += "Je pense que tu voulais dire " + pkmnLine[0]
+                    m += "Je pense que tu voulais dire " + listOfWrong[0][0]
                 elif whichCase == 11:
-                    m += "Tu ne voulais pas dire " + pkmnLine[0] + ", plutôt ?"
+                    m += "Tu ne voulais pas dire " + listOfWrong[0][0] + ", plutôt ?"
                 elif whichCase == 12:
-                    m += "Je crois que tu voulais plutôt parler " + ["de ","d'"][startsWithVowel(pkmnLine[0])] + pkmnLine[0]
+                    m += "Je crois que tu voulais plutôt parler " + ["de ","d'"][startsWithVowel(listOfWrong[0][0])] + listOfWrong[0][0]
                 elif whichCase == 13:
-                    m += "Tu voulais dire " + pkmnLine[0] + ", je me trompe ?"
+                    m += "Tu voulais dire " + listOfWrong[0][0] + ", je me trompe ?"
                 elif whichCase == 14:
-                    m += "Ce ne serait pas " + pkmnLine[0] + ", plutôt ?"
+                    m += "Ce ne serait pas " + listOfWrong[0][0] + ", plutôt ?"
                 elif whichCase == 15:
-                    m += "En fait, son nom c'est " + pkmnLine[0]
+                    m += "En fait, son nom c'est " + listOfWrong[0][0]
                 elif whichCase == 16:
-                    m += "Il s'appelle " + pkmnLine[0]
+                    m += "Il s'appelle " + listOfWrong[0][0]
                 elif whichCase == 17:
-                    m += "Ça s'écrit " + pkmnLine[0] + " ! " + toEmojis(pkmnLine[0]) + " !"
+                    m += "Ça s'écrit " + listOfWrong[0][0] + " ! " + toEmojis(listOfWrong[0][0]) + " !"
                 elif whichCase == 18:
                     m += "Il s'appelle " + pkmnLine[0] + " ! " + toEmojis(pkmnLine[0]) + " !"
 
                 (cur, conn) = bdd.ouvrirConnexion()
                 try:
-                    bdd.executerReq(cur, "SELECT emoji FROM corrections WHERE correct = '"+pkmnLine[0]+"';")
+                    bdd.executerReq(cur, "SELECT emoji FROM corrections WHERE correct = '"+listOfWrong[0][0]+"';")
                     customEmoji = cur.fetchone()[0]
                 except Exception:
                     raise
@@ -468,12 +517,12 @@ while True:
                 m += " " + [emojis[random.randint(0,len(emojis)-1)], customEmoji][len(customEmoji)]
 
             else:
-                m += "Ils s'appellent "+strListToText(listOfWrong, 138-len(m+"Ils s'appellent "))[0]+" "+emojis[random.randint(0,len(emojis)-1)]
+                m += "Ils s'appellent "+strListToText([element[0] for element in listOfWrong], 138-len(m+"Ils s'appellent "))[0]+" "+emojis[random.randint(0,len(emojis)-1)]
 
             addToAnswered(s)
 
             q = api.update_status(m, s.id)
-            time.sleep(3600)
-            #sys.exit()
+            time.sleep(20)
+            sys.exit()
 
         writeToLog("F: nothing found for "+majuscules(incorrect)+" ("+pkmnLine[0]+")\n")

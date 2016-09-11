@@ -11,7 +11,7 @@ def cleanAnswered():
 
 	(cur, conn) = bdd.ouvrirConnexion()
 	try:
-		bdd.executerReq(cur, "SELECT id, date, isLast FROM answered;")
+		bdd.executerReq(cur, "SELECT id, date FROM alreadyAnswered;")
 		rows = cur.fetchall()
 	except Exception:
 		raise
@@ -19,8 +19,9 @@ def cleanAnswered():
 		bdd.fermerConnexion(cur, conn)
 
 	for row in rows:
-		twtDate = datetime.datetime.strptime(row[1], "%d-%m-%y\n").date()
-		if (datetime.today() - twtDate).days < howOldAreTweets + 2:
+		twtDate = datetime.datetime.strptime(row[1], "%d-%m-%y").date()
+
+		if (datetime.date.today() - twtDate).days < howOldAreTweets + 2:
 			answered.append(row[0])
 		else:
 			tooOld.append(row[0])
@@ -28,7 +29,7 @@ def cleanAnswered():
 	(cur, conn) = bdd.ouvrirConnexion()
 	try:
 		for _id in tooOld:
-			bdd.executerReq(cur, "DELETE FROM answered WHERE id = %s;" % (_id))
+			bdd.executerReq(cur, "DELETE FROM alreadyAnswered WHERE id = '%s';" % (_id))
 		bdd.validerModifs(conn)
 	except Exception:
 		raise
@@ -36,3 +37,5 @@ def cleanAnswered():
 		bdd.fermerConnexion(cur, conn)
 
 	return answered
+
+cleanAnswered()

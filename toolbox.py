@@ -2,8 +2,8 @@
 # -*- coding: UTF-8 -*-
 
 import tweepy, time, re, datetime, random, os
+import MySQLdb
 import bddAccess as bdd
-import bddExceptions as exceptions
 
 here = os.path.dirname(os.path.abspath(__file__))
 
@@ -26,6 +26,7 @@ api = tweepy.API(auth)
 
 howOldAreTweets = 3 #how many days old a tweet can be to still be fetched
 maxSameInRow = 999 #how many times in a row can you tweet about one Mon.
+masterName = "Rhynchocephale"
 
 emojisLettres = {"a": "🇦",
 "b": "🇧",
@@ -70,7 +71,7 @@ toAsciiTable = [
 def lastAnswer():
     (cur, conn) = bdd.ouvrirConnexion()
     try:
-        bdd.executerReq(cur, "SELECT id FROM alreadyAnswered WHERE isLast = 1;")
+        bdd.executerReq(cur, "SELECT id FROM isLast;")
         lastId = int(cur.fetchone()[0])
     except Exception:
         raise
@@ -163,10 +164,10 @@ def getOneTweet(twtId):
 
 # [a, b, c, d] -> "a, b, c et d", truncated to MAXLEN chars.
 def strListToText(strList, maxLen=float("inf")):
-    strList = [var for var in strList if var] #removing empty strings
+    strList = list(set([var for var in strList if var])) #removing empty strings & duplicates
 
     if len(strList)==1:
-        if strList[0] <= maxLen:
+        if len(strList[0]) <= maxLen:
             return (strList[0], 1)
         return ("", 0)
 
@@ -177,10 +178,12 @@ def strListToText(strList, maxLen=float("inf")):
         totalLen = len("".join(strList))+4*[0,1][len(strList) > 1]+2*(len(strList)-1)
 
     if len(strList)==1:
-        if strList[0] <= maxLen:
+        if len(strList[0]) <= maxLen:
             return (strList[0], 1)
         return ("", 0)
 
+    print("We are in strListToText. Here is strList:")
+    print(strList)
     return (", ".join(strList[:-1]) + " et "+ strList[-1], len(strList))
 
 #[a, b, c, d] -> "a,b,c,d"
@@ -203,9 +206,9 @@ def checkForWrong(text):
 
     for row in rows:
         for incorrect in row[1].split(","):
-            if searchWord(majuscules(incorrect), text) and not row[0] in wrong:
+            if re.search(incorrect, text, re.IGNORECASE) and not row[0] in wrong and not re.search(row[0], text, re.IGNORECASE):
 
-                wrong.append(row[0])
+                wrong.append([row[0], majuscules(incorrect)])
 
                 (cur, conn) = bdd.ouvrirConnexion()
                 try:
@@ -220,13 +223,13 @@ def checkForWrong(text):
 
     return wrong
 
-def addToAnswered(s, isLast=0):
+def addToAnswered(s):
         twtId = str(s.id)
         twtDate = s.created_at.date().strftime("%d-%m-%y")
 
         (cur,conn) = bdd.ouvrirConnexion()
         try:
-            bdd.executerReq(cur, "INSERT INTO alreadyAnswered (id, date, isLast) VALUES ('%s', '%s', '%s');" % (twtId, twtDate, isLast))
+            bdd.executerReq(cur, "INSERT INTO alreadyAnswered (id, date) VALUES ('%s', '%s');" % (twtId, twtDate))
             bdd.validerModifs(conn)
         except Exception:
             raise
@@ -235,26 +238,28 @@ def addToAnswered(s, isLast=0):
 
         return 0
 
-def getOnePokemonToWorkOn(correct = ""):
-	(cur, conn) = bdd.ouvrirConnexion()
-	if correct:
-		try:
-			resultLength = bdd.executerReq(cur, "SELECT correct, listOfIncorrect FROM corrections WHERE correct='%s';" % (correct))
-			line = cur.fetchall()[0]
-		except Exception:
-			raise
-		finally:
-			bdd.fermerConnexion(cur, conn)
-	if not correct or not resultLength:
-		try:
-			bdd.executerReq(cur, "SELECT correct, listOfIncorrect FROM corrections;")
-			line = cur.fetchall()[random.randint(0,len(list(cur))-1)]
-		except Exception:
-			raise
-		finally:
-			bdd.fermerConnexion(cur, conn)
+def getOnePokemonToWorkOn(incorrect = ""):
+    if incorrect:
+        (cur, conn) = bdd.ouvrirConnexion()
+        try:
+            resultLength = bdd.executerReq(cur, "SELECT correct, listOfIncorrect FROM corrections WHERE listOfIncorrect LIKE '%"+incorrect+"%';")
+            if resultLength:
+                line = cur.fetchall()[0]
+        except Exception:
+            raise
+        finally:
+            bdd.fermerConnexion(cur, conn)
+    if not incorrect or not resultLength:
+        (cur, conn) = bdd.ouvrirConnexion()
+        try:
+            bdd.executerReq(cur, "SELECT correct, listOfIncorrect FROM corrections;")
+            line = cur.fetchall()[random.randint(0,len(list(cur))-1)]
+        except Exception:
+            raise
+        finally:
+            bdd.fermerConnexion(cur, conn)
 
-	return line
+    return line
 
 def blockUser(s, swearword):
     screenName = s.user.screen_name
@@ -262,7 +267,7 @@ def blockUser(s, swearword):
 
     (cur, conn) = bdd.ouvrirConnexion()
     try:
-        bdd.executerReq(cur, "INSERT INTO blockedUsers (name, tweet, swearword) VALUES ('%s', '%s', '%s');" % (screenName, content, swearword))
+        bdd.executerReq(cur, "INSERT INTO blockedUsers VALUES (%s, %s, %s);", (screenName, content, swearword))
         bdd.validerModifs(conn)
     except Exception:
         raise
@@ -292,22 +297,41 @@ def getAlreadyAnswered():
         raise
     finally:
         bdd.fermerConnexion(cur, conn)
+    
+    answered = [a[0] for a in answered]
 
     return answered
 
-def insertNewPokemon():
-    corrections = []
-    (cur,conn) = bdd.ouvrirConnexion()
+def manualBlock(screenName):
+
+    if screenName == masterName:
+        return 1
+    (cur, conn) = bdd.ouvrirConnexion()
     try:
-        for row in corrections:
-            emoji = ""
-            if len(row) > 2:
-                emoji = row[2]
-            bdd.executerReq(cur, "INSERT INTO corrections (correct, listOfIncorrect, emoji, overallCount, monthlyCount) VALUES (%s, %s, %s, 0, 0);", (row[0], list2str(row[1]), emoji))
+        bdd.executerReq(cur, "INSERT INTO blockedUsers (name, tweet, swearword) VALUES (%s, %s, %s);", (screenName, "Manual block", "Manual block") )
         bdd.validerModifs(conn)
     except Exception:
         raise
+        return 1
     finally:
         bdd.fermerConnexion(cur, conn)
 
     return 0
+
+
+def manualUnblock(screenName):
+    (cur, conn) = bdd.ouvrirConnexion()
+    try:
+        bdd.executerReq(cur, "DELETE FROM blockedUsers WHERE name = '%s';" % (screenName))
+        deletedRows = cur.rowcount
+        bdd.validerModifs(conn)
+    except Exception:
+        raise
+        return 1
+    finally:
+        bdd.fermerConnexion(cur, conn)
+
+    if cur.rowcount:
+         return 0
+    return 1
+
