@@ -4,13 +4,14 @@ import re
 from toolbox import *
 import bddAccess as bdd
 
-insults = ["suce ", "couille", "gueule", "ferme", "taggle", "pute", "connard", "emmerde", "chier", "fdp", "encule", "casse", "degage", "dégage", "abruti", "bloque", "fuck", "fout", "nique", "tg", "osef", "blk", "blc", "stop", "stfu", "ntm", "ta mere", "ta mère", "mentionne pa", "ballec", "balek", "balec", "ballek"]
+insults = ["suce ", "couille", "gueule", "ferme", "taggle", "pute", "connard", "emmerde", "chier", "fdp", "encule", "casse", "degage", "dégage", "abruti", "bloque", "fuck", "en fou", "foutr", "nique", "tg", "osef", "blk", "blc", "stop", "stfu", "ntm", "ta mere", "ta mère", "mentionne pa", "ballec", "balek", "balec", "ballek"]
 
 answeringBackEmojis = ["😧", "😕", "😟", "😒", "😥"]
 
 lastId = int(lastAnswer())
 #twt = tweetQuery("@PkmnCheckerBot -filter:retweets", lastId)
-twt = tweetQuery("@PkmnCheckerBot -filter:retweets")
+#twt = tweetQuery("@PkmnCheckerBot -filter:retweets")
+twt = api.mentions_timeline()
 
 answered = getAlreadyAnswered()
 blocked = getBlockedUsers()

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 
-import tweepy, time, re, datetime, random, os
+import tweepy, time, re, datetime, random, os, nltk
 import MySQLdb
 import bddAccess as bdd
 
@@ -26,7 +26,6 @@ api = tweepy.API(auth)
 
 howOldAreTweets = 3 #how many days old a tweet can be to still be fetched
 maxSameInRow = 999 #how many times in a row can you tweet about one Mon.
-masterName = "Rhynchocephale"
 
 emojisLettres = {"a": "🇦",
 "b": "🇧",
@@ -65,7 +64,7 @@ toAsciiTable = [
 ["ê","e"],
 ["â","a"],
 ["œ","oe"],
-["'",""]
+["'"," "]
 ]
 
 def lastAnswer():
@@ -123,10 +122,11 @@ def startsWithVowel(myString):
     return False
 
 def searchWord(word, text):
-    word = toAscii(word)
-    text = toAscii(text)
-    if re.compile(r'\b({0})\b'.format(word), flags=re.IGNORECASE).search(text):
-        return True
+    word = toAscii(word).lower()
+    text = nltk.tokenize.casual.casual_tokenize(toAscii(text).lower().replace('#', ' '))
+    for a in text:
+        if word == a:
+            return True
     return False
 
 def writeToLog(text):
@@ -140,15 +140,11 @@ def tweetQuery(text, since=0):
     isOk = False
     while not isOk:
         try:
-            if since:
-                twt = api.search(q=text, lang='fr', locale='fr', since_id=since)
-            else:
-                twt = api.search(q=text, lang='fr', locale='fr')
+            twt = api.search(q=text,rpp=100)
             isOk = True
         except tweepy.error.RateLimitError:
             print("RATE EXCEDED. SLEEPING FOR 16 MINUTES")
-            writeToLog("W: QUERY RATE EXCEDED. SLEEPING FOR 16 MINUTES")
-            time.sleep(960)
+            time.sleep(60*16)
 
     return twt
 
@@ -156,9 +152,8 @@ def getOneTweet(twtId):
     try:
         twt = api.get_status(twtId)
     except tweepy.error.RateLimitError:
-        print("RATE EXCEDED. SLEEPING FOR 16 MINUTES")
-        writeToLog("W: QUERY RATE EXCEDED. SLEEPING FOR 16 MINUTES")
-        time.sleep(960)
+        print("RATE EXCEDED. SLEEPING FOR 17 MINUTES")
+        time.sleep(60*17)
 
     return twt
 
@@ -191,9 +186,9 @@ def list2str(strList):
     strList = filter(None, strList) #removing empty strings
     return ",".join(strList)
 
-
 def checkForWrong(text):
     wrong = []
+    text = toAscii(text)
 
     (cur, conn) = bdd.ouvrirConnexion()
     try:
@@ -205,8 +200,8 @@ def checkForWrong(text):
         bdd.fermerConnexion(cur, conn)
 
     for row in rows:
-        for incorrect in row[1].split(","):
-            if re.search(incorrect, text, re.IGNORECASE) and not row[0] in wrong and not re.search(row[0], text, re.IGNORECASE):
+        for incorrect in [x.split(" -")[0] for x in row[1].split(",")]:
+            if searchWord(incorrect, text) and not row[0] in wrong and not searchWord(row[0], text):
 
                 wrong.append([row[0], majuscules(incorrect)])
 
@@ -218,8 +213,6 @@ def checkForWrong(text):
                     raise
                 finally:
                     bdd.fermerConnexion(cur, conn)
-
-                writeToLog("P: "+majuscules(incorrect)+" ("+row[0]+") has been found\n")
 
     return wrong
 
@@ -242,7 +235,7 @@ def getOnePokemonToWorkOn(incorrect = ""):
     if incorrect:
         (cur, conn) = bdd.ouvrirConnexion()
         try:
-            resultLength = bdd.executerReq(cur, "SELECT correct, listOfIncorrect FROM corrections WHERE listOfIncorrect LIKE '%"+incorrect+"%';")
+            resultLength = bdd.executerReq(cur, "SELECT correct,listOfIncorrect FROM corrections WHERE listOfIncorrect LIKE '%"+incorrect+"%';")
             if resultLength:
                 line = cur.fetchall()[0]
         except Exception:
@@ -252,7 +245,7 @@ def getOnePokemonToWorkOn(incorrect = ""):
     if not incorrect or not resultLength:
         (cur, conn) = bdd.ouvrirConnexion()
         try:
-            bdd.executerReq(cur, "SELECT correct, listOfIncorrect FROM corrections;")
+            bdd.executerReq(cur, "SELECT correct,listOfIncorrect FROM corrections;")
             line = cur.fetchall()[random.randint(0,len(list(cur))-1)]
         except Exception:
             raise
@@ -260,6 +253,22 @@ def getOnePokemonToWorkOn(incorrect = ""):
             bdd.fermerConnexion(cur, conn)
 
     return line
+
+def getFourPokemonToWorkOn():
+    incorrect = set()
+    correct = set()
+    while len(incorrect) < 4:
+        newPokemonToWorkOn = getOnePokemonToWorkOn()
+        newMonToAdd = newPokemonToWorkOn[1].split(',')
+        random.shuffle(newMonToAdd)
+        newMonToAdd = newMonToAdd[:min(len(newMonToAdd), 4-len(incorrect))]
+        correct.add(newPokemonToWorkOn[0])
+        for x in newMonToAdd:
+            if "-" in x:
+                incorrect.add("("+x+")")
+            else:
+                incorrect.add(x)
+    return correct, incorrect
 
 def blockUser(s, swearword):
     screenName = s.user.screen_name
@@ -285,6 +294,8 @@ def getBlockedUsers():
         raise
     finally:
         bdd.fermerConnexion(cur, conn)
+
+    blocked = [b[0] for b in blocked]
 
     return blocked
 
