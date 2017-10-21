@@ -234,37 +234,37 @@ def addToAnswered(s):
         return 0
 
 def resetMonthlycount():
-	(cur, conn) = bdd.ouvrirConnexion()
-	try:
-		bdd.executerReq(cur, "UPDATE corrections SET monthlyCount = 0;")
-		bdd.validerModifs(conn)
-	except Exception:
-		raise
-	bdd.fermerConnexion(cur, conn)	
-	return 0
-	
-def resetFailcount():
-	(cur, conn) = bdd.ouvrirConnexion()
+    (cur, conn) = bdd.ouvrirConnexion()
     try:
-		bdd.executerReq(cur, "UPDATE corrections SET failcount = 0 WHERE failcount < "+str(failDecrement)+";")
+        bdd.executerReq(cur, "UPDATE corrections SET monthlyCount = 0;")
+        bdd.validerModifs(conn)
+    except Exception:
+        raise
+    bdd.fermerConnexion(cur, conn)    
+    return 0
+    
+def resetFailcount():
+    (cur, conn) = bdd.ouvrirConnexion()
+    try:
+        bdd.executerReq(cur, "UPDATE corrections SET failcount = 0 WHERE failcount < "+str(failDecrement)+";")
         bdd.executerReq(cur, "UPDATE corrections SET failcount = failcount-"+str(failDecrement)+" WHERE failcount >= "+str(failDecrement)+";")
-		bdd.validerModifs(conn)
+        bdd.validerModifs(conn)
     except Exception:
         raise
     finally:
         bdd.fermerConnexion(cur, conn)
-	return 0
+    return 0
 
 def incrementFailcount(correctName):
-	(cur, conn) = bdd.ouvrirConnexion()
+    (cur, conn) = bdd.ouvrirConnexion()
     try:
         bdd.executerReq(cur, "UPDATE corrections SET failcount = failcount+1 WHERE correct ="+correctName+";")
-		bdd.validerModifs(conn)
+        bdd.validerModifs(conn)
     except Exception:
         raise
     finally:
         bdd.fermerConnexion(cur, conn)
-	return 0
+    return 0
 
 def getOnePokemonToWorkOn(incorrect = ""):
     if incorrect:
@@ -282,10 +282,10 @@ def getOnePokemonToWorkOn(incorrect = ""):
         try:
             resultLenght = bdd.executerReq(cur, "SELECT correct,listOfIncorrect,failcount FROM corrections WHERE failcount < "+maxFails+";")
             if resultLenght:
-				line = cur.fetchall()[random.randint(0,len(list(cur))-1)]
-			else:
-				resetFailcount()
-				getOnePokemonToWorkOn()
+                line = cur.fetchall()[random.randint(0,len(list(cur))-1)]
+            else:
+                resetFailcount()
+                getOnePokemonToWorkOn()
         except Exception:
             raise
         finally:
