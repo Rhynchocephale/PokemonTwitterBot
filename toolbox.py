@@ -258,7 +258,7 @@ def resetFailcount():
 def incrementFailcount(correctName):
     (cur, conn) = bdd.ouvrirConnexion()
     try:
-        bdd.executerReq(cur, "UPDATE corrections SET failcount = failcount+1 WHERE correct ="+correctName+";")
+        bdd.executerReq(cur, "UPDATE corrections SET failcount = failcount+1 WHERE correct =\""+correctName+"\";")
         bdd.validerModifs(conn)
     except Exception:
         raise
@@ -270,9 +270,10 @@ def getOnePokemonToWorkOn(incorrect = ""):
     if incorrect:
         (cur, conn) = bdd.ouvrirConnexion()
         try:
-            resultLength = bdd.executerReq(cur, "SELECT correct,listOfIncorrect,failcount FROM corrections WHERE listOfIncorrect LIKE '%"+incorrect+"%';")
-            if resultLength:
-                line = cur.fetchall()[0]
+            bdd.executerReq(cur, "SELECT correct,listOfIncorrect,failcount FROM corrections WHERE listOfIncorrect LIKE '%"+incorrect+"%';")
+            fetched = cur.fetchall()
+            if fetched:
+				line = fetched[0]
         except Exception:
             raise
         finally:
@@ -280,9 +281,10 @@ def getOnePokemonToWorkOn(incorrect = ""):
     if not incorrect or not resultLength:
         (cur, conn) = bdd.ouvrirConnexion()
         try:
-            resultLenght = bdd.executerReq(cur, "SELECT correct,listOfIncorrect,failcount FROM corrections WHERE failcount < "+maxFails+";")
-            if resultLenght:
-                line = cur.fetchall()[random.randint(0,len(list(cur))-1)]
+            bdd.executerReq(cur, "SELECT correct,listOfIncorrect,failcount FROM corrections WHERE failcount < "+str(maxFails)+";")
+            fetched = cur.fetchall()
+            if fetched:
+                line = fetched[random.randint(0,len(list(cur))-1)]
             else:
                 resetFailcount()
                 getOnePokemonToWorkOn()

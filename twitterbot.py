@@ -134,14 +134,13 @@ while True:
 
         content = s.text
         sn = s.user.screen_name
-        print(s.in_reply_to_zcreen_name)
 
         if not badTweet:
             if str(s.id) in answered:
                 print("Already answered")
                 continue
 
-            if "PkmnCheckerBot" in s.in_reply_to_screen_name and s.created_at > datetime.datetime.now() - datetime.timedelta(hours=2):
+            if s.in_reply_to_screen_name and "PkmnCheckerBot" in s.in_reply_to_screen_name and s.created_at > datetime.datetime.now() - datetime.timedelta(hours=2):
                 print("I'll leave that to checkAnswers...")
                 continue
 
