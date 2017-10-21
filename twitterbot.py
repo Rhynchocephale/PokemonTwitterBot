@@ -100,7 +100,7 @@ def populateAlreadyAnswered():
 #addEmojisToPkmn()
 #insertPokemon()
 
-emojis = ["😉","😜","⚠","☝","😤"]
+emojis = ["😉","😜","⚠","☝","😤","😐"]
 
 answered = getAlreadyAnswered()
 blocked = getBlockedUsers()
@@ -114,139 +114,167 @@ while True:
     else:
         pkmnToSearchFor = " OR ".join(badlyWrittenPkmn)
 
-    if True:
+	date_X_days_ago = datetime.date.today() - datetime.timedelta(days=howOldAreTweets)
+	date_X_days_ago = date_X_days_ago.isoformat()
 
-        date_X_days_ago = datetime.date.today() - datetime.timedelta(days=howOldAreTweets)
-        date_X_days_ago = date_X_days_ago.isoformat()
+	myQuery = pkmnToSearchFor + " -from:pkmncheckerbot -RT lang:fr since:" + date_X_days_ago
+	print(myQuery)
 
-        myQuery = pkmnToSearchFor + " -from:pkmncheckerbot -RT lang:fr since:" + date_X_days_ago
-        print(myQuery)
+	if badTweet:
+		twt = [getOneTweet(badTweet)]
+	else:
+		twt = tweetQuery(myQuery)
 
-        if badTweet:
-            twt = [getOneTweet(badTweet)]
-        else:
-            twt = tweetQuery(myQuery)
+	random.shuffle(twt)
 
-        random.shuffle(twt)
+	indexOfTweet = 0
+	for s in twt:
+		time.sleep(3)
+		indexOfTweet += 1
 
-        indexOfTweet = 0
-        for s in twt:
-            time.sleep(3)
-            indexOfTweet += 1
+		content = s.text
+		sn = s.user.screen_name
+		print(s.in_reply_to_zcreen_name)
 
-            content = s.text
-            sn = s.user.screen_name
+		if not badTweet:
+			if str(s.id) in answered:
+				print("Already answered")
+				continue
 
-            if not badTweet:
-                if str(s.id) in answered:
-                    print("Already answered")
-                    continue
+			if "PkmnCheckerBot" in s.in_reply_to_screen_name and s.created_at > datetime.datetime.now() - datetime.timedelta(hours=2):
+				print("I'll leave that to checkAnswers...")
+				continue
 
-                if "@PkmnCheckerBot" in content and s.created_at > datetime.datetime.now() - datetime.timedelta(hours=2):
-                    print("I'll leave that to checkAnswers...")
-                    continue
+			if re.search("|".join(badlyWrittenPkmn), sn, re.IGNORECASE):
+				print("Incorrect in author pseudo")
+				continue
 
-                if re.search("|".join(badlyWrittenPkmn), sn, re.IGNORECASE):
-                    print("Incorrect in author pseudo")
-                    continue
+			if re.search("@\S*("+"|".join(badlyWrittenPkmn)+")", content, re.IGNORECASE):
+				print("Incorrect in mention pseudo")
+				continue
 
-                if re.search("@\S*("+"|".join(badlyWrittenPkmn)+")", content, re.IGNORECASE):
-                    print("Incorrect in mention pseudo")
-                    continue
+			correctInText = False   
+			for correctMon in correctlyWrittenPkmn:
+				if searchWord(toAscii(correctMon), toAscii(content)):
+					print("Correct in text")
+					correctInText = True
+			if correctInText:
+				continue
 
-                correctInText = False   
-                for correctMon in correctlyWrittenPkmn:
-                    if searchWord(toAscii(correctMon), toAscii(content)):
-                        print("Correct in text")
-                        correctInText = True
-                if correctInText:
-                    continue
+			if not re.search("|".join(badlyWrittenPkmn), toAscii(content), re.IGNORECASE):
+				print("No incorrect in text. Possibly in retweet")
+				continue
 
-                if not re.search("|".join(badlyWrittenPkmn), toAscii(content), re.IGNORECASE):
-                    print("No incorrect in text. Possibly in retweet")
-                    continue
+			if re.search("@Youtube", content, re.IGNORECASE):
+				print("Youtube video")
+				continue
 
-                if re.search("@Youtube", content, re.IGNORECASE):
-                    print("Youtube video")
-                    continue
+			if sn in blocked:
+				print("Blocked user")
+				continue
 
-                if sn in blocked:
-                    print("Blocked user")
-                    continue
+		print(str(indexOfTweet)+"/"+str(len(twt))+": "+content)
+		listOfWrong = checkForWrong(content)
 
-            print(str(indexOfTweet)+"/"+str(len(twt))+": "+content)
-            listOfWrong = checkForWrong(content)
+		if not listOfWrong:
+			print("This is weird, no wrong found.")
+			continue
 
-            if not listOfWrong:
-                print("This is weird, no wrong found.")
-                continue
+		m = "@"+sn+" "
 
-            m = "@"+sn+" "
+		if len(listOfWrong) == 1 or strListToText([element[0] for element in listOfWrong], 138-len("Ils s'appellent "))[1] < 2:
+			whichCase = random.randint(0,30)
 
-            if len(listOfWrong) == 1 or strListToText([element[0] for element in listOfWrong], 138-len("Ils s'appellent "))[1] < 2:
-                whichCase = random.randint(0,18)
+			if whichCase == 0:
+				m += "Ça s'écrit " + listOfWrong[0][0]
+			elif whichCase == 1:
+				m += listOfWrong[0][1] + " ? Ce ne serait pas plutôt " + listOfWrong[0][0] + " ?"
+			elif whichCase == 2:
+				m += "C'est " + listOfWrong[0][0] + ", pas " + listOfWrong[0][1]
+			elif whichCase == 3:
+				m += "Son vrai nom c'est " + listOfWrong[0][0]
+			elif whichCase == 4:
+				m += "Point orthographe : ça s'écrit " + listOfWrong[0][0]
+			elif whichCase == 5:
+				m += "C'est \"" + listOfWrong[0][0] + '", voyons !'
+			elif whichCase == 6:
+				m += "Protip: c'est " + listOfWrong[0][0]
+			elif whichCase == 7:
+				m += "D'après mon Pokédex, ce Pokémon s'appelle " + listOfWrong[0][0]
+			elif whichCase == 8:
+				m += "Attention, ce Pokémon s'appelle en fait " + listOfWrong[0][0]
+			elif whichCase == 9:
+				m += listOfWrong[0][0] + ", pas " + listOfWrong[0][1] + " !"
+			elif whichCase == 10:
+				m += "Je pense que tu voulais dire " + listOfWrong[0][0]
+			elif whichCase == 11:
+				m += "Tu ne voulais pas dire " + listOfWrong[0][0] + ", plutôt ?"
+			elif whichCase == 12:
+				m += "Je crois que tu voulais plutôt parler " + ["de ","d'"][startsWithVowel(listOfWrong[0][0])] + listOfWrong[0][0]
+			elif whichCase == 13:
+				m += "Tu voulais dire " + listOfWrong[0][0] + ", je me trompe ?"
+			elif whichCase == 14:
+				m += "Ce ne serait pas " + listOfWrong[0][0] + ", plutôt ?"
+			elif whichCase == 15:
+				m += "En fait, son nom c'est " + listOfWrong[0][0]
+			elif whichCase == 16:
+				m += "Il s'appelle " + listOfWrong[0][0]
+			elif whichCase == 17:
+				m += "Ça s'écrit " + listOfWrong[0][0] + " ! " + toEmojis(listOfWrong[0][0]) + " !"
+			elif whichCase == 18:
+				m += "Il s'appelle " + listOfWrong[0][0] + " ! " + toEmojis(pkmnLine[0]) + " !"
+			elif whichCase == 19:
+				m += "Selon le Pokédex, le nom de ce truc c'est " + listOfWrong[0][0]
+			elif whichCase == 20:
+				m += listOfWrong[0][1] + ", ou " + listOfWrong[0][0] + " ?"
+			elif whichCase == 21:
+				m += "Je pinaille, mais ça s'écrit " + listOfWrong[0][0]
+			elif whichCase == 22:
+				m += "Point pinaillage relou : " + listOfWrong[0][1] + " s'écrit en fait " + listOfWrong[0][0]
+			elif whichCase == 23:
+				m += "C'est " + listOfWrong[0][0] + ", voyons ! Pas " + listOfWrong[0][1] + " !"
+			elif whichCase == 24:
+				m += "Ça s'écrit " + listOfWrong[0][0] + ". C'était pas évident, j'en conviens."
+			elif whichCase == 25:
+				m += "C'est pas forcément évident à écrire, mais il s'appelle " + listOfWrong[0][0]
+			elif whichCase == 26:
+				m += "Certes " + listOfWrong[0][0] + " n'a pas un nom facile, mais de là à l'écrire " + listOfWrong[0][1] + "..."
+			elif whichCase == 27:
+				m += "Il s'appelle " + listOfWrong[0][0] + ", ce n'est pourtant pas très compliqué"
+			elif whichCase == 28:
+				m += "Tu dois vouloir parler de " + listOfWrong[0][O]
+			elif whichCase == 29:
+				m += listOfWrong[0][1] + " ? Un peu de respect pour " + listOfWrong[0][0] + ", enfin !"
+			elif whichCase == 30:
+				m += "En l'écrivant " + listOfWrong[0][0] + ", c'est bien mieux"
 
-                if whichCase == 0:
-                    m += "Ça s'écrit " + listOfWrong[0][0]
-                elif whichCase == 1:
-                    m += listOfWrong[0][1] + " ? Ce ne serait pas plutôt " + listOfWrong[0][0] + " ?"
-                elif whichCase == 2:
-                    m += "C'est " + listOfWrong[0][0] + ", pas " + listOfWrong[0][1]
-                elif whichCase == 3:
-                    m += "Son vrai nom c'est " + listOfWrong[0][0]
-                elif whichCase == 4:
-                    m += "Point orthographe : ça s'écrit " + listOfWrong[0][0]
-                elif whichCase == 5:
-                    m += "C'est \"" + listOfWrong[0][0] + '", voyons !'
-                elif whichCase == 6:
-                    m += "Protip: c'est " + listOfWrong[0][0]
-                elif whichCase == 7:
-                    m += "D'après mon Pokédex, ce Pokémon s'appelle " + listOfWrong[0][0]
-                elif whichCase == 8:
-                    m += "Attention, ce Pokémon s'appelle en fait " + listOfWrong[0][0]
-                elif whichCase == 9:
-                    m += listOfWrong[0][0] + ", pas " + listOfWrong[0][1] + " !"
-                elif whichCase == 10:
-                    m += "Je pense que tu voulais dire " + listOfWrong[0][0]
-                elif whichCase == 11:
-                    m += "Tu ne voulais pas dire " + listOfWrong[0][0] + ", plutôt ?"
-                elif whichCase == 12:
-                    m += "Je crois que tu voulais plutôt parler " + ["de ","d'"][startsWithVowel(listOfWrong[0][0])] + listOfWrong[0][0]
-                elif whichCase == 13:
-                    m += "Tu voulais dire " + listOfWrong[0][0] + ", je me trompe ?"
-                elif whichCase == 14:
-                    m += "Ce ne serait pas " + listOfWrong[0][0] + ", plutôt ?"
-                elif whichCase == 15:
-                    m += "En fait, son nom c'est " + listOfWrong[0][0]
-                elif whichCase == 16:
-                    m += "Il s'appelle " + listOfWrong[0][0]
-                elif whichCase == 17:
-                    m += "Ça s'écrit " + listOfWrong[0][0] + " ! " + toEmojis(listOfWrong[0][0]) + " !"
-                elif whichCase == 18:
-                    m += "Il s'appelle " + pkmnLine[0] + " ! " + toEmojis(pkmnLine[0]) + " !"
+			(cur, conn) = bdd.ouvrirConnexion()
+			try:
+				bdd.executerReq(cur, "SELECT emoji FROM corrections WHERE correct = '"+listOfWrong[0][0]+"';")
+				customEmoji = cur.fetchone()[0]
+			except Exception:
+				raise
+			finally:
+				bdd.fermerConnexion(cur, conn)
 
-                (cur, conn) = bdd.ouvrirConnexion()
-                try:
-                    bdd.executerReq(cur, "SELECT emoji FROM corrections WHERE correct = '"+listOfWrong[0][0]+"';")
-                    customEmoji = cur.fetchone()[0]
-                except Exception:
-                    raise
-                finally:
-                    bdd.fermerConnexion(cur, conn)
+			#add custom emoji if it exists, random default one otherwise
+			m += " " + [emojis[random.randint(0,len(emojis)-1)], customEmoji][len(customEmoji)]
 
-                #add custom emoji if it exists, random default one otherwise
-                m += " " + [emojis[random.randint(0,len(emojis)-1)], customEmoji][len(customEmoji)]
+		else:
+			m += "Ils s'appellent "+strListToText([element[0] for element in listOfWrong], 138-len(m+"Ils s'appellent "))[0]+" "+emojis[random.randint(0,len(emojis)-1)]
 
-            else:
-                m += "Ils s'appellent "+strListToText([element[0] for element in listOfWrong], 138-len(m+"Ils s'appellent "))[0]+" "+emojis[random.randint(0,len(emojis)-1)]
+		answered = getAlreadyAnswered()
 
-            answered = getAlreadyAnswered()
+		if not str(s.id) in answered:
+			addToAnswered(s)
 
-            if not str(s.id) in answered:
-                addToAnswered(s)
+			q = api.update_status(m, s.id)
+			time.sleep(20)
+			sys.exit()
+		else:
+			print("Collision between two instances")
 
-                q = api.update_status(m, s.id)
-                time.sleep(20)
-                sys.exit()
-            else:
-                print("Collision between two instances")
+	####If we reached this line, nothing has been found####
+	else:
+		for correctName in correctlyWrittenPkmn:
+			incrementFailcount(correctName)

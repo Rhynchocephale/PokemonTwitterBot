@@ -24,8 +24,9 @@ auth.set_access_token(ACCESS_KEY, ACCESS_SECRET)
 #api = tweepy.API(auth_handler=auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
 api = tweepy.API(auth)
 
-howOldAreTweets = 3 #how many days old a tweet can be to still be fetched
-maxSameInRow = 999 #how many times in a row can you tweet about one Mon.
+howOldAreTweets = 5 #how many days old a tweet can be to still be fetched
+maxFails = 5
+failDecrement = 3
 
 emojisLettres = {"a": "🇦",
 "b": "🇧",
@@ -157,7 +158,8 @@ def getOneTweet(twtId):
 
     return twt
 
-# [a, b, c, d] -> "a, b, c et d", truncated to MAXLEN chars.
+# 1st returned value: [a, b, c, d] -> "a, b, c et d", truncated to MAXLEN chars.
+# 2nd returned value: number of elements of the initial list still present.
 def strListToText(strList, maxLen=float("inf")):
     strList = list(set([var for var in strList if var])) #removing empty strings & duplicates
 
@@ -231,11 +233,44 @@ def addToAnswered(s):
 
         return 0
 
+def resetMonthlycount():
+	(cur, conn) = bdd.ouvrirConnexion()
+	try:
+		bdd.executerReq(cur, "UPDATE corrections SET monthlyCount = 0;")
+		bdd.validerModifs(conn)
+	except Exception:
+		raise
+	bdd.fermerConnexion(cur, conn)	
+	return 0
+	
+def resetFailcount():
+	(cur, conn) = bdd.ouvrirConnexion()
+    try:
+		bdd.executerReq(cur, "UPDATE corrections SET failcount = 0 WHERE failcount < "+str(failDecrement)+";")
+        bdd.executerReq(cur, "UPDATE corrections SET failcount = failcount-"+str(failDecrement)+" WHERE failcount >= "+str(failDecrement)+";")
+		bdd.validerModifs(conn)
+    except Exception:
+        raise
+    finally:
+        bdd.fermerConnexion(cur, conn)
+	return 0
+
+def incrementFailcount(correctName):
+	(cur, conn) = bdd.ouvrirConnexion()
+    try:
+        bdd.executerReq(cur, "UPDATE corrections SET failcount = failcount+1 WHERE correct ="+correctName+";")
+		bdd.validerModifs(conn)
+    except Exception:
+        raise
+    finally:
+        bdd.fermerConnexion(cur, conn)
+	return 0
+
 def getOnePokemonToWorkOn(incorrect = ""):
     if incorrect:
         (cur, conn) = bdd.ouvrirConnexion()
         try:
-            resultLength = bdd.executerReq(cur, "SELECT correct,listOfIncorrect FROM corrections WHERE listOfIncorrect LIKE '%"+incorrect+"%';")
+            resultLength = bdd.executerReq(cur, "SELECT correct,listOfIncorrect,failcount FROM corrections WHERE listOfIncorrect LIKE '%"+incorrect+"%';")
             if resultLength:
                 line = cur.fetchall()[0]
         except Exception:
@@ -245,8 +280,12 @@ def getOnePokemonToWorkOn(incorrect = ""):
     if not incorrect or not resultLength:
         (cur, conn) = bdd.ouvrirConnexion()
         try:
-            bdd.executerReq(cur, "SELECT correct,listOfIncorrect FROM corrections;")
-            line = cur.fetchall()[random.randint(0,len(list(cur))-1)]
+            resultLenght = bdd.executerReq(cur, "SELECT correct,listOfIncorrect,failcount FROM corrections WHERE failcount < "+maxFails+";")
+            if resultLenght:
+				line = cur.fetchall()[random.randint(0,len(list(cur))-1)]
+			else:
+				resetFailcount()
+				getOnePokemonToWorkOn()
         except Exception:
             raise
         finally:

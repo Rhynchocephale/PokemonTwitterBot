@@ -7,13 +7,14 @@ import bddAccess as bdd
 try:
 	bdd.executerReq(cur, "SELECT correct, monthlyCount FROM corrections ORDER BY monthlyCount DESC;")
 	corrected = cur.fetchall()
-	bdd.executerReq(cur, "UPDATE corrections SET monthlyCount = 0;")
-	bdd.validerModifs(conn)
 except Exception:
 	raise
 bdd.fermerConnexion(cur, conn)
 
-m = "Les Pokémon les plus corrigés du mois :\n"
+resetMonthlycount()
+resetFailcount()
+
+m = "Pokémon les plus corrigés du mois :\n"
 i = 0
 line = ""
 while len(m+line) <= 140:
@@ -30,4 +31,4 @@ while len(m+line) <= 140:
 
 if i > 0:
 	print(m)
-	q = api.update_status(m)
+	q = api.update_status(m.strip())

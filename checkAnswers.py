@@ -4,7 +4,7 @@ import re
 from toolbox import *
 import bddAccess as bdd
 
-insults = ["suce ", "couille", "gueule", "ferme", "taggle", "pute", "connard", "emmerde", "chier", "fdp", "encule", "casse", "degage", "dégage", "abruti", "bloque", "fuck", "en fou", "foutr", "nique", "tg", "osef", "blk", "blc", "stop", "stfu", "ntm", "ta mere", "ta mère", "mentionne pa", "ballec", "balek", "balec", "ballek"]
+insults = ["lache moi", "lâche moi", "suce ", "couille", "gueule", "ferme", "taggle", "pute", "connard", "emmerde", "chier", "fdp", "encule", "casse", "degage", "dégage", "abruti", "bloque", "fuck", "en fou", "foutr", "(^| )nique", "tg", "osef", "blk", "blc", "stop", "stfu", "ntm", "ta mere", "ta mère", "mentionne pa", "ballec", "balek", "balec", "ballek"]
 
 answeringBackEmojis = ["😧", "😕", "😟", "😒", "😥"]
 
@@ -17,7 +17,6 @@ answered = getAlreadyAnswered()
 blocked = getBlockedUsers()
 
 print("-------RECENT ANSWERS-------\n")
-writeToLog("M: ---RECENT ANSWERS---\n")
 
 print(datetime.datetime.now().isoformat())
 
@@ -28,7 +27,6 @@ for s in twt:
 	content = s.text
 	sn = s.user.screen_name
 	print(content)
-	writeToLog("A from @"+sn+": "+content+"\n")
 
 	if str(s.id) in answered:
 		continue
@@ -37,7 +35,7 @@ for s in twt:
 		lastId = s.id
 
 	if sn in blocked:
-		writeToLog("W: user already blocked")
+		#writeToLog("W: user already blocked")
 		continue
 
 	#looks for badly written Pokémon names
@@ -70,7 +68,7 @@ for s in twt:
 
 		else:
 			print("SOMETHING IS VERY WRONG HERE")
-			writeToLog("SOMETHING IS VERY WRONG HERE")
+			#writeToLog("SOMETHING IS VERY WRONG HERE")
 			wtf = True
 
 		m += " "+answeringBackEmojis[random.randint(0,len(answeringBackEmojis)-1)]
@@ -96,7 +94,7 @@ for s in twt:
 					raise
 			if not sn in blocked:
 				blockUser(s, swearword)
-			writeToLog("B: "+ swearword + "found in " + content + "\n")
+			#writeToLog("B: "+ swearword + "found in " + content + "\n")
 			break
 
 (cur, conn) = bdd.ouvrirConnexion()
