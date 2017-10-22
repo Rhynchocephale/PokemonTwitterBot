@@ -273,7 +273,7 @@ def getOnePokemonToWorkOn(incorrect = ""):
             bdd.executerReq(cur, "SELECT correct,listOfIncorrect,failcount FROM corrections WHERE listOfIncorrect LIKE '%"+incorrect+"%';")
             fetched = cur.fetchall()
             if fetched:
-				line = fetched[0]
+                line = fetched[0]
         except Exception:
             raise
         finally:

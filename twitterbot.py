@@ -181,7 +181,7 @@ while True:
         
         #decrements failcount
         for element in listOfWrong:
-			incrementFailcount(element[0], -1)
+            incrementFailcount(element[0], -1)
 
         m = "@"+sn+" "
 
