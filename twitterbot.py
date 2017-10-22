@@ -178,6 +178,10 @@ while True:
         if not listOfWrong:
             print("This is weird, no wrong found.")
             continue
+        
+        #decrements failcount
+        for element in listOfWrong:
+			incrementFailcount(element[0], -1)
 
         m = "@"+sn+" "
 
@@ -241,7 +245,7 @@ while True:
             elif whichCase == 27:
                 m += "Il s'appelle " + listOfWrong[0][0] + ", ce n'est pourtant pas très compliqué"
             elif whichCase == 28:
-                m += "Tu dois vouloir parler de " + listOfWrong[0][O]
+                m += "Tu dois vouloir parler de " + listOfWrong[0][0]
             elif whichCase == 29:
                 m += listOfWrong[0][1] + " ? Un peu de respect pour " + listOfWrong[0][0] + ", enfin !"
             elif whichCase == 30:

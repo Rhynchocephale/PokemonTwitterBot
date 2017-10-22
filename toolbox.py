@@ -255,10 +255,10 @@ def resetFailcount():
         bdd.fermerConnexion(cur, conn)
     return 0
 
-def incrementFailcount(correctName):
+def incrementFailcount(correctName, increment=1):
     (cur, conn) = bdd.ouvrirConnexion()
     try:
-        bdd.executerReq(cur, "UPDATE corrections SET failcount = failcount+1 WHERE correct =\""+correctName+"\";")
+        bdd.executerReq(cur, "UPDATE corrections SET failcount = failcount+"+str(increment)+" WHERE correct =\""+correctName+"\";")
         bdd.validerModifs(conn)
     except Exception:
         raise
