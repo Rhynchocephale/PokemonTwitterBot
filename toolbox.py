@@ -141,9 +141,9 @@ def tweetQuery(text, since=0):
     isOk = False
     while not isOk:
         try:
-            twt = api.search(q=text,rpp=100,tweet_mode='extended')
+            twt = api.search_tweets(q=text,count=100,result_type='recent')
             isOk = True
-        except tweepy.error.RateLimitError:
+        except tweepy.errors.RateLimitError:
             print("RATE EXCEDED. SLEEPING FOR 16 MINUTES")
             time.sleep(60*16)
 
@@ -152,7 +152,7 @@ def tweetQuery(text, since=0):
 def getOneTweet(twtId):
     try:
         twt = api.get_status(twtId)
-    except tweepy.error.RateLimitError:
+    except tweepy.errors.RateLimitError:
         print("RATE EXCEDED. SLEEPING FOR 17 MINUTES")
         time.sleep(60*17)
 
@@ -236,7 +236,7 @@ def addToAnswered(s):
 def resetMonthlycount():
     (cur, conn) = bdd.ouvrirConnexion()
     try:
-        bdd.executerReq(cur, "UPDATE corrections SET monthlyCount = 0, failcount = 0;")
+        bdd.executerReq(cur, "UPDATE corrections SET monthlyCount = 0, failCount = 0;")
         bdd.validerModifs(conn)
     except Exception:
         raise
@@ -246,8 +246,8 @@ def resetMonthlycount():
 def resetFailcount():
     (cur, conn) = bdd.ouvrirConnexion()
     try:
-        bdd.executerReq(cur, "UPDATE corrections SET failcount = 0 WHERE failcount < "+str(failDecrement)+";")
-        bdd.executerReq(cur, "UPDATE corrections SET failcount = failcount-"+str(failDecrement)+" WHERE failcount >= "+str(failDecrement)+";")
+        bdd.executerReq(cur, "UPDATE corrections SET failCount = 0 WHERE failCount < "+str(failDecrement)+";")
+        bdd.executerReq(cur, "UPDATE corrections SET failCount = failCount-"+str(failDecrement)+" WHERE failCount >= "+str(failDecrement)+";")
         bdd.validerModifs(conn)
     except Exception:
         raise
@@ -258,7 +258,7 @@ def resetFailcount():
 def incrementFailcount(correctName, increment=1):
     (cur, conn) = bdd.ouvrirConnexion()
     try:
-        bdd.executerReq(cur, "UPDATE corrections SET failcount = failcount+"+str(increment)+" WHERE correct =\""+correctName+"\";")
+        bdd.executerReq(cur, "UPDATE corrections SET failCount = failCount+"+str(increment)+" WHERE correct =\""+correctName+"\";")
         bdd.validerModifs(conn)
     except Exception:
         pass
@@ -270,7 +270,7 @@ def getOnePokemonToWorkOn(incorrect = "", correct = ""):
     if incorrect:
         (cur, conn) = bdd.ouvrirConnexion()
         try:
-            bdd.executerReq(cur, "SELECT correct,listOfIncorrect,failcount FROM corrections WHERE listOfIncorrect LIKE '%"+incorrect+"%';")
+            bdd.executerReq(cur, "SELECT correct,listOfIncorrect,failCount FROM corrections WHERE listOfIncorrect LIKE '%"+incorrect+"%';")
             fetched = cur.fetchall()
             if fetched:
                 line = fetched[0]
@@ -281,7 +281,7 @@ def getOnePokemonToWorkOn(incorrect = "", correct = ""):
     if not incorrect or not fetched:
         (cur, conn) = bdd.ouvrirConnexion()
         try:
-            request = "SELECT correct,listOfIncorrect,failcount FROM corrections WHERE failcount < "+str(maxFails)
+            request = "SELECT correct,listOfIncorrect,failCount FROM corrections WHERE failCount < "+str(maxFails)
             if correct:
                 correct = ['"'+element+'"' for element in correct]
                 request += " AND correct <> "+" AND correct <> ".join(correct)

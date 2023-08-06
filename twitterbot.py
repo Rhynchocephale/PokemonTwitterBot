@@ -135,7 +135,7 @@ while True:
         time.sleep(3)
         indexOfTweet += 1
 
-        content = s.full_text
+        content = s.text
         sn = s.user.screen_name
 
         if not badTweet:
@@ -277,7 +277,7 @@ while True:
         if not str(s.id) in answered:
             addToAnswered(s)
 
-            q = api.update_status(m, s.id)
+            q = api.update_status(status=m, in_reply_to_status_id=s.id)
             time.sleep(20)
             sys.exit()
         else:
