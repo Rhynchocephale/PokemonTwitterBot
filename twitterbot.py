@@ -135,7 +135,7 @@ while True:
         time.sleep(3)
         indexOfTweet += 1
 
-        content = s.text
+        content = s.full_text
         sn = s.user.screen_name
 
         if not badTweet:

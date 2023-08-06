@@ -21,7 +21,6 @@ print("-------RECENT ANSWERS-------\n")
 print(datetime.datetime.now().isoformat())
 
 for s in twt:
-
 	addToAnswered(s)
 
 	content = s.text
@@ -79,7 +78,7 @@ for s in twt:
 		if not wtf:
 			try:
 				q = api.update_status(m, s.id)
-			except tweepy.TweepError:
+			except tweepy.errors.TweepyException:
 				raise
 			break
 
@@ -89,8 +88,8 @@ for s in twt:
 			print("DETECTED: "+swearword)
 			if len(correctWritings) == 0: #prevents answering twice
 				try:
-					api.update_status("@"+sn+" pic.twitter.com/ZZFVlapuhd", s.id)
-				except tweepy.TweepError:
+					api.update_status(status="@"+sn+" pic.twitter.com/ZZFVlapuhd", in_reply_to_status_id=s.id)
+				except tweepy.errors.TweepyException:
 					raise
 			if not sn in blocked:
 				blockUser(s, swearword)

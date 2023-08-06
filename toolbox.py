@@ -141,7 +141,7 @@ def tweetQuery(text, since=0):
     isOk = False
     while not isOk:
         try:
-            twt = api.search_tweets(q=text,count=100,result_type='recent')
+            twt = api.search_tweets(q=text,count=100,result_type='recent',tweet_mode="extended")
             isOk = True
         except tweepy.errors.RateLimitError:
             print("RATE EXCEDED. SLEEPING FOR 16 MINUTES")
