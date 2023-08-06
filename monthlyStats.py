@@ -14,10 +14,10 @@ bdd.fermerConnexion(cur, conn)
 resetMonthlycount()
 resetFailcount()
 
-m = "Pokémon les plus corrigés du mois :\n"
+m = "Records de corrections du mois :\n"
 i = 0
 line = ""
-while len(m+line) <= 140:
+while len(m+line) <= 280:
     m += line
     print(m)
     print(len(m))
@@ -27,7 +27,7 @@ while len(m+line) <= 140:
     while corrected[i][1] == counter:
         pokemons.append(corrected[i][0])
         i += 1
-    line = ", ".join(pokemons)+" : "+str(counter)+" fois \n"
+    line = ", ".join(pokemons)+" : "+str(counter)+"\n"
 
 if i > 0:
     print(m)

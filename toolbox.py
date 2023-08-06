@@ -24,9 +24,9 @@ auth.set_access_token(ACCESS_KEY, ACCESS_SECRET)
 #api = tweepy.API(auth_handler=auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
 api = tweepy.API(auth)
 
-howOldAreTweets = 5 #how many days old a tweet can be to still be fetched
-maxFails = 5
-failDecrement = 3
+howOldAreTweets = 6 #how many days old a tweet can be to still be fetched
+maxFails = 10
+failDecrement = 5
 
 emojisLettres = {"a": "🇦",
 "b": "🇧",
@@ -80,7 +80,7 @@ def lastAnswer():
 
     return lastId
 
-#capitalize first letter of every word in the string & removes the words beginning with "-"
+#capitalize first letter of every word in the string & remove the words beginning with "-"
 def majuscules(words):
     a = " ".join(w.capitalize() for w in words.split())
     if a.find('-') > -1:
@@ -141,7 +141,7 @@ def tweetQuery(text, since=0):
     isOk = False
     while not isOk:
         try:
-            twt = api.search(q=text,rpp=100)
+            twt = api.search(q=text,rpp=100,tweet_mode='extended')
             isOk = True
         except tweepy.error.RateLimitError:
             print("RATE EXCEDED. SLEEPING FOR 16 MINUTES")
@@ -236,13 +236,13 @@ def addToAnswered(s):
 def resetMonthlycount():
     (cur, conn) = bdd.ouvrirConnexion()
     try:
-        bdd.executerReq(cur, "UPDATE corrections SET monthlyCount = 0;")
+        bdd.executerReq(cur, "UPDATE corrections SET monthlyCount = 0, failcount = 0;")
         bdd.validerModifs(conn)
     except Exception:
         raise
-    bdd.fermerConnexion(cur, conn)    
+    bdd.fermerConnexion(cur, conn)
     return 0
-    
+
 def resetFailcount():
     (cur, conn) = bdd.ouvrirConnexion()
     try:
@@ -261,12 +261,12 @@ def incrementFailcount(correctName, increment=1):
         bdd.executerReq(cur, "UPDATE corrections SET failcount = failcount+"+str(increment)+" WHERE correct =\""+correctName+"\";")
         bdd.validerModifs(conn)
     except Exception:
-        raise
+        pass
     finally:
         bdd.fermerConnexion(cur, conn)
     return 0
 
-def getOnePokemonToWorkOn(incorrect = ""):
+def getOnePokemonToWorkOn(incorrect = "", correct = ""):
     if incorrect:
         (cur, conn) = bdd.ouvrirConnexion()
         try:
@@ -278,34 +278,39 @@ def getOnePokemonToWorkOn(incorrect = ""):
             raise
         finally:
             bdd.fermerConnexion(cur, conn)
-    if not incorrect or not resultLength:
+    if not incorrect or not fetched:
         (cur, conn) = bdd.ouvrirConnexion()
         try:
-            bdd.executerReq(cur, "SELECT correct,listOfIncorrect,failcount FROM corrections WHERE failcount < "+str(maxFails)+";")
+            request = "SELECT correct,listOfIncorrect,failcount FROM corrections WHERE failcount < "+str(maxFails)
+            if correct:
+                correct = ['"'+element+'"' for element in correct]
+                request += " AND correct <> "+" AND correct <> ".join(correct)
+            request += ";"
+            bdd.executerReq(cur, request)
             fetched = cur.fetchall()
             if fetched:
                 line = fetched[random.randint(0,len(list(cur))-1)]
             else:
+                print("Resetting count")
                 resetFailcount()
-                getOnePokemonToWorkOn()
+                line = getOnePokemonToWorkOn()
         except Exception:
             raise
         finally:
             bdd.fermerConnexion(cur, conn)
-
     return line
 
 def getFourPokemonToWorkOn():
     incorrect = set()
     correct = set()
     while len(incorrect) < 4:
-        newPokemonToWorkOn = getOnePokemonToWorkOn()
+        newPokemonToWorkOn = getOnePokemonToWorkOn(correct=correct)
         newMonToAdd = newPokemonToWorkOn[1].split(',')
         random.shuffle(newMonToAdd)
         newMonToAdd = newMonToAdd[:min(len(newMonToAdd), 4-len(incorrect))]
         correct.add(newPokemonToWorkOn[0])
         for x in newMonToAdd:
-            if "-" in x:
+            if " -" in x:
                 incorrect.add("("+x+")")
             else:
                 incorrect.add(x)
@@ -349,13 +354,12 @@ def getAlreadyAnswered():
         raise
     finally:
         bdd.fermerConnexion(cur, conn)
-    
+
     answered = [a[0] for a in answered]
 
     return answered
 
 def manualBlock(screenName):
-
     if screenName == masterName:
         return 1
     (cur, conn) = bdd.ouvrirConnexion()

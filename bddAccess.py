@@ -1,5 +1,11 @@
 # -*- coding: UTF-8 -*-
 
+'''
+Created on 21 feb. 2014
+
+@author: Olivia Gautrais
+'''
+
 import MySQLdb, os
 
 here = os.path.dirname(os.path.abspath(__file__))

@@ -32,8 +32,8 @@ for table in tables:
     data += "\n\n"
 
 now = datetime.datetime.now()
-filename = str(os.getenv("HOME")) + "/Documents/PkmnBot/backups/backupPokemon_" + now.strftime("%Y-%m-%d_%H:%M") + ".sql"
+filename = str(os.getenv("HOME")) + "/PkmnBot/backups/backupPokemon_" + now.strftime("%Y-%m-%d_%H:%M") + ".sql"
 
-FILE = open(filename,"w")
+FILE = open(filename,'w')
 FILE.writelines(data)
 FILE.close()

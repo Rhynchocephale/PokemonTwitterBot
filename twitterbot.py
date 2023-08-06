@@ -8,6 +8,7 @@ random.seed()
 
 badTweet = ""
 badMon = ""
+maxTweetSize = 280-2
 
 print(sys.argv)
 
@@ -114,6 +115,8 @@ while True:
     else:
         pkmnToSearchFor = " OR ".join(badlyWrittenPkmn)
 
+    badlyWrittenPkmn = [_.split(" -")[0].replace("(","").replace(")","") for _ in badlyWrittenPkmn]
+
     date_X_days_ago = datetime.date.today() - datetime.timedelta(days=howOldAreTweets)
     date_X_days_ago = date_X_days_ago.isoformat()
 
@@ -132,7 +135,7 @@ while True:
         time.sleep(3)
         indexOfTweet += 1
 
-        content = s.text
+        content = s.full_text
         sn = s.user.screen_name
 
         if not badTweet:
@@ -145,14 +148,14 @@ while True:
                 continue
 
             if re.search("|".join(badlyWrittenPkmn), sn, re.IGNORECASE):
-                print("Incorrect in author pseudo")
+                print("Incorrect in author pseudo: ",sn)
                 continue
 
             if re.search("@\S*("+"|".join(badlyWrittenPkmn)+")", content, re.IGNORECASE):
-                print("Incorrect in mention pseudo")
+                print("Incorrect in mention pseudo: "," ".join( [x.split(" ")[0] for x in content.split('@')[1::]] ))
                 continue
 
-            correctInText = False   
+            correctInText = False
             for correctMon in correctlyWrittenPkmn:
                 if searchWord(toAscii(correctMon), toAscii(content)):
                     print("Correct in text")
@@ -160,8 +163,8 @@ while True:
             if correctInText:
                 continue
 
-            if not re.search("|".join(badlyWrittenPkmn), toAscii(content), re.IGNORECASE):
-                print("No incorrect in text. Possibly in retweet")
+            if not re.search("|".join(badlyWrittenPkmn), content, re.IGNORECASE):
+                print("No incorrect in text. Possibly in retweet. Content was:", content)
                 continue
 
             if re.search("@Youtube", content, re.IGNORECASE):
@@ -178,14 +181,14 @@ while True:
         if not listOfWrong:
             print("This is weird, no wrong found.")
             continue
-        
+
         #decrements failcount
         for element in listOfWrong:
             incrementFailcount(element[0], -1)
 
         m = "@"+sn+" "
 
-        if len(listOfWrong) == 1 or strListToText([element[0] for element in listOfWrong], 138-len("Ils s'appellent "))[1] < 2:
+        if len(listOfWrong) == 1 or strListToText([element[0] for element in listOfWrong], maxTweetSize-len("Ils s'appellent "))[1] < 2:
             whichCase = random.randint(0,30)
 
             if whichCase == 0:
@@ -245,7 +248,7 @@ while True:
             elif whichCase == 27:
                 m += "Il s'appelle " + listOfWrong[0][0] + ", ce n'est pourtant pas très compliqué"
             elif whichCase == 28:
-                m += "Tu dois vouloir parler de " + listOfWrong[0][0]
+                m += "Tu dois vouloir parler " + ["de ","d'"][startsWithVowel(listOfWrong[0][0])] + listOfWrong[0][0]
             elif whichCase == 29:
                 m += listOfWrong[0][1] + " ? Un peu de respect pour " + listOfWrong[0][0] + ", enfin !"
             elif whichCase == 30:
@@ -261,10 +264,13 @@ while True:
                 bdd.fermerConnexion(cur, conn)
 
             #add custom emoji if it exists, random default one otherwise
-            m += " " + [emojis[random.randint(0,len(emojis)-1)], customEmoji][len(customEmoji)]
+            if customEmoji:
+                m += " " + customEmoji
+            else:
+                m += " " + emojis[random.randint(0,len(emojis)-1)]
 
         else:
-            m += "Ils s'appellent "+strListToText([element[0] for element in listOfWrong], 138-len(m+"Ils s'appellent "))[0]+" "+emojis[random.randint(0,len(emojis)-1)]
+            m += "Ils s'appellent "+strListToText([element[0] for element in listOfWrong], maxTweetSize-len(m+"Ils s'appellent "))[0]+" "+emojis[random.randint(0,len(emojis)-1)]
 
         answered = getAlreadyAnswered()
 
